@@ -7,6 +7,148 @@
     <title>Webpack template</title>
 </head>
 <body>
-    <h1>Hello webpack</h1>
+    <!-- div that will hold our WebGL canvas -->
+    <div id="canvas"></div>
+    <!-- div used to create our plane -->
+    <div class="plane">
+    <!-- image that will be used as texture by our plane -->
+        <img src="images/bg.jpg" />
+    </div>
 </body>
+<!-- vertex shader -->
+<script id="plane-vs" type="x-shader/x-vertex">
+    #ifdef GL_ES
+    precision mediump float;
+    #endif
+    // those are the mandatory attributes that the lib sets
+    attribute vec3 aVertexPosition;
+    attribute vec2 aTextureCoord;
+    // those are mandatory uniforms that the lib sets and that contain our model view and projection matrix
+    uniform mat4 uMVMatrix;
+    uniform mat4 uPMatrix;
+    // our texture matrix that will handle image cover
+    uniform mat4 uTextureMatrix0;
+    // pass your vertex and texture coords to the fragment shader
+    varying vec3 vVertexPosition;
+    varying vec2 vTextureCoord;
+    void main() {
+    vec3 vertexPosition = aVertexPosition;
+    gl_Position = uPMatrix * uMVMatrix * vec4(vertexPosition, 1.0);
+    // set the varyings
+    // here we use our texture matrix to calculate the accurate texture coords
+    vTextureCoord = (uTextureMatrix0 * vec4(aTextureCoord, 0.0, 1.0)).xy;
+    vVertexPosition = vertexPosition;
+    }
+</script>
+<!-- fragment shader that distord image -->
+<script id="plane-fs" type="x-shader/x-fragment">
+    #ifdef GL_ES
+    precision mediump float;
+    #endif
+
+    varying vec3 vVertexPosition;
+    varying vec2 vTextureCoord;
+
+    uniform vec2 uResolution;
+    uniform vec2 uMouse;
+    uniform float uTime;
+
+    // our texture sampler (default name, to use a different name please refer to the documentation)
+    uniform sampler2D uSampler0;
+
+    void main(){
+        vec2 st = gl_FragCoord.xy/uResolution.xy;
+        //st.x *= uResolution.x/uResolution.y;
+        vec3 color = vec3(0.0);
+        // get our texture coords from our varying
+        vec2 textureCoord = vTextureCoord;
+        float d = 0.0;
+
+        // Remap the space to -1. to 1.
+        st = st *2.392-1.208;
+
+        // Make the distance field
+        d = length( sin(st/0.392)-(sin(uTime/50.0)/3.8+0.448) );
+        //d = length( abs(sin(st/0.392))-(abs(sin(uTime/50.0)/3.8)+0.448) );
+        //d = length( min(abs(st)-0.812,0.) );
+        //d = length( max(abs(st)-0.228,0.) );
+
+        // Visualize the distance field
+        //gl_FragColor = vec4(vec3(fract(d*10.0)),1.0);
+        //textureCoord *= vec2(d,textureCoord.y);
+        textureCoord.x += 0.01 * d;
+
+        // Drawing with the distance field
+        //gl_FragColor = vec4(vec3( step(.3,d) ),1.0);
+        //gl_FragColor = vec4(vec3( step(.3,d) * step(d,.4)),1.0);
+        //gl_FragColor = vec4(vec3( smoothstep(.3,.4,d)* smoothstep(.6,.5,d)) ,1.0);
+
+        // displace our pixels along the X axis based on our time uniform
+        // textures coords are ranging from 0.0 to 1.0 on both axis
+        //textureCoord.x += sin(textureCoord.y * 25.0) * cos(textureCoord.x * 25.0) * (cos(uTime / 50.0)) / 25.0;
+        // map our texture with the texture matrix coords
+        gl_FragColor = texture2D(uSampler0, textureCoord);
+    }
+</script>
+<!-- fragment shader with cool circle effect around mouse -->
+<script type="x-shader/x-fragment">
+    #ifdef GL_ES
+    precision mediump float;
+    #endif
+
+    varying vec3 vVertexPosition;
+    varying vec2 vTextureCoord;
+
+    uniform vec2 uResolution;
+    uniform vec2 uMousePosition;
+    uniform float uTime;
+
+    // our texture sampler (default name, to use a different name please refer to the documentation)
+    uniform sampler2D uSampler0;
+
+    float circle(in vec2 _st, in float _radius){
+        vec2 dist = _st-vec2(.8);
+        return 1.-smoothstep(_radius-(_radius*0.05),
+                             _radius+(_radius*0.05),
+                             dot(dist,dist)*2.0);
+    }
+
+    void main() {
+        vec2 st = vVertexPosition.xy + 0.8;
+
+        // get our texture coords from our varying
+        vec2 textureCoord = vTextureCoord;
+        
+        // base = vec3 color = vec3(circle(st + 0.2,0.2));
+        //vec3 color = vec3(circle(st,0.2));
+        // follow mouse symetrei
+        //vec3 color = vec3(circle(st - 0.5 + uMousePosition/uResolution,0.2));
+        //vec3 color = vec3(circle(st - sin(uTime/50.)/5.,0.2));
+        
+        // follow mouse
+        //vec3 color = vec3(circle(st + 0.5 - uMousePosition/uResolution,0.2));
+        vec3 color = vec3(circle(st - uMousePosition,0.2));
+        //vec3 color = vec3(circle(st,0.2));
+        
+        // make the circle turn
+        //vec3 color = vec3(circle(vec2(st.x - sin(uTime/50.0)/5.,st.y - cos(uTime/50.0)/5.),0.2));
+        
+        // add another circle to turn
+        //color += vec3(circle(vec2(st.x-sin((uTime+0.7)/50.0)/4.8,st.y-cos((uTime+0.7)/50.0)/4.8),0.2));
+        
+        //testing some stuff
+        //color += vec3(circle(vec2(st.x-sin((uTime+.2)/50.0)/5.,st.y+cos((uTime+.2)/50.0)/5.),0.2));
+        //color += vec3(circle(vec2(st.x-cos((uTime+0.9)/50.0)/4.5,st.y-sin((uTime+0.9)/50.0)/4.5),0.2));
+        //color += vec3(circle(vec2(st.x-cos((uTime+0.9)/50.0)/4.,st.y-sin((uTime+0.9)/50.08)/4.),0.2));
+        //color += vec3(circle(vec2(st.x-cos((uTime+0.9)/50.0)/4.,st.y-sin((uTime+0.9)/50.0)/4.),0.2));
+
+        // texture deform base = textureCoord.x += sin(textureCoord.y * 25.0) * cos(textureCoord.x * 25.0) * (cos(uTime / 50.0)) / 25.0;
+
+        // cool deformation = textureCoord.x += sin(textureCoord.y * 25.0) * cos(textureCoord.x * 25.0) * (cos(uTime / 50.0)) / 25.0 * color.b;
+        // textureCoord.x += (sin(uTime / 50.0)) / 100.0 * color.b;
+        textureCoord +=  0.004 * color.b;
+    
+        gl_FragColor = texture2D(uSampler0, textureCoord);
+    }
+</script>
 </html>
