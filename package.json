@@ -9,14 +9,14 @@
     "express": "^4.22.1",
     "file-loader": "^3.0.1",
     "style-loader": "^0.23.1",
-    "webpack": "^4.28.1"
+    "webpack": "^5.105.4"
   },
   "devDependencies": {
     "@babel/core": "^7.2.2",
     "@babel/preset-env": "^7.2.3",
     "babel-loader": "^8.3.0",
     "clean-webpack-plugin": "^1.0.0",
-    "copy-webpack-plugin": "^11.0.0",
+    "copy-webpack-plugin": "^14.0.0",
     "html-loader": "^4.2.0",
     "html-webpack-plugin": "^5.5.0",
     "mini-css-extract-plugin": "^2.7.2",
